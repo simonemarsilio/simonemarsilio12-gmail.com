@@ -1,491 +1,573 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="Benzina Radar" />
-  <meta name="theme-color" content="#f2f2f7" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Benzina Radar"/>
+  <meta name="theme-color" content="#f2f2f7"/>
   <title>Benzina Radar</title>
-  <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
-    * {
-      box-sizing: border-box; margin: 0; padding: 0;
-      -webkit-tap-highlight-color: transparent;
-      font-family: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
-    }
+    * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; font-family:-apple-system,'SF Pro Display','SF Pro Text','Helvetica Neue',sans-serif; }
     :root {
-      --bg: #f2f2f7; --bg2: #ffffff; --bg3: #e5e5ea;
-      --label: #000; --label2: #3c3c43;
-      --label3: rgba(60,60,67,0.6); --label4: rgba(60,60,67,0.18);
-      --sep: rgba(60,60,67,0.29);
-      --blue: #007aff; --green: #34c759; --yellow: #ff9f0a;
-      --orange: #ff6b00; --red: #ff3b30; --lime: #30d158;
-      --purple: #af52de;
-      --safe-top: env(safe-area-inset-top, 44px);
-      --safe-bottom: env(safe-area-inset-bottom, 20px);
+      --bg:#f2f2f7; --bg2:#fff; --bg3:#e5e5ea; --bg4:#d1d1d6;
+      --label:#000; --label2:#3c3c43; --label3:rgba(60,60,67,.6); --label4:rgba(60,60,67,.18);
+      --sep:rgba(60,60,67,.29);
+      --blue:#007aff; --green:#34c759; --yellow:#ff9f0a; --orange:#ff6b00; --red:#ff3b30; --lime:#30d158; --purple:#af52de;
+      --safe-top:env(safe-area-inset-top,44px); --safe-bottom:env(safe-area-inset-bottom,20px);
     }
-    html, body { height: 100%; overflow: hidden; background: var(--bg); }
-    #app { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+    html,body { height:100%; overflow:hidden; background:var(--bg); }
+    #app { display:flex; flex-direction:column; height:100dvh; overflow:hidden; }
 
-    .status-spacer {
-      height: calc(var(--safe-top) + 4px);
-      background: rgba(242,242,247,0.9);
-      backdrop-filter: saturate(180%) blur(20px);
-      -webkit-backdrop-filter: saturate(180%) blur(20px);
-      flex-shrink: 0;
+    .status-spacer { height:calc(var(--safe-top) + 4px); background:rgba(242,242,247,.95); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); flex-shrink:0; }
+
+    .navbar { background:rgba(242,242,247,.95); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); padding:8px 16px 10px; flex-shrink:0; border-bottom:.5px solid var(--sep); }
+    .navbar-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .app-title { font-size:17px; font-weight:600; letter-spacing:-.4px; }
+
+    .btn-row { display:flex; gap:7px; }
+    .btn-loc,.btn-here {
+      display:flex; align-items:center; gap:5px; border:none; border-radius:20px;
+      padding:7px 13px; font-size:13px; font-weight:600; cursor:pointer; transition:opacity .15s; letter-spacing:-.2px;
     }
-    .navbar {
-      background: rgba(242,242,247,0.9);
-      backdrop-filter: saturate(180%) blur(20px);
-      -webkit-backdrop-filter: saturate(180%) blur(20px);
-      padding: 8px 16px 12px; flex-shrink: 0;
-      border-bottom: 0.5px solid var(--sep);
+    .btn-loc { background:var(--blue); color:#fff; }
+    .btn-here { background:var(--bg3); color:var(--label2); display:none; }
+    .btn-loc:active,.btn-here:active { opacity:.7; }
+    .btn-loc:disabled { opacity:.4; }
+
+    .radius-row { display:flex; gap:7px; align-items:center; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+    .radius-row::-webkit-scrollbar { display:none; }
+    .radius-label { font-size:12px; color:var(--label3); font-weight:500; white-space:nowrap; }
+    .pill-group { display:flex; gap:5px; }
+    .pill { padding:4px 10px; border-radius:14px; font-size:13px; font-weight:500; background:var(--bg3); color:var(--label2); border:none; cursor:pointer; white-space:nowrap; }
+    .pill.active { background:var(--blue); color:#fff; }
+    .pill:active { opacity:.7; }
+
+    #map { flex:1; min-height:0; z-index:0; }
+    .leaflet-control-attribution { font-size:9px !important; }
+    .leaflet-control-zoom { display:none; }
+
+    /* Search here button on map */
+    .search-here-btn {
+      position:absolute; top:12px; left:50%; transform:translateX(-50%);
+      z-index:500; background:var(--bg2); color:var(--blue);
+      border:none; border-radius:20px; padding:8px 18px;
+      font-size:14px; font-weight:600; letter-spacing:-.2px;
+      box-shadow:0 2px 12px rgba(0,0,0,.18); cursor:pointer;
+      display:none; white-space:nowrap;
+      transition:opacity .15s;
     }
-    .navbar-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .app-title { font-size: 17px; font-weight: 600; letter-spacing: -0.4px; color: var(--label); }
+    .search-here-btn:active { opacity:.7; }
+    .search-here-btn.visible { display:block; }
 
-    .locate-btn {
-      display: flex; align-items: center; gap: 5px;
-      background: var(--blue); color: #fff; border: none;
-      border-radius: 20px; padding: 7px 14px;
-      font-size: 14px; font-weight: 600; cursor: pointer;
-      letter-spacing: -0.2px; transition: opacity 0.15s;
-    }
-    .locate-btn:active { opacity: 0.7; }
-    .locate-btn:disabled { opacity: 0.4; }
-
-    .radius-row { display: flex; gap: 7px; align-items: center; }
-    .radius-label { font-size: 12px; color: var(--label3); font-weight: 500; white-space: nowrap; }
-    .pill-group { display: flex; gap: 5px; }
-    .pill {
-      padding: 4px 11px; border-radius: 14px; font-size: 13px;
-      font-weight: 500; background: var(--bg3); color: var(--label2);
-      border: none; cursor: pointer; transition: all 0.15s;
-    }
-    .pill.active { background: var(--blue); color: #fff; }
-    .pill:active { opacity: 0.7; }
-
-    #map { flex: 1; min-height: 0; z-index: 0; }
-    .leaflet-control-attribution { font-size: 9px !important; }
-
-    /* BOTTOM SHEET */
+    /* SHEET */
     .sheet {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      background: var(--bg2);
-      border-radius: 13px 13px 0 0;
-      box-shadow: 0 -1px 0 var(--sep), 0 -8px 24px rgba(0,0,0,0.1);
-      z-index: 1000;
-      transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
-      max-height: 82dvh; display: flex; flex-direction: column;
+      position:absolute; bottom:0; left:0; right:0; background:var(--bg2);
+      border-radius:13px 13px 0 0; box-shadow:0 -1px 0 var(--sep),0 -8px 24px rgba(0,0,0,.1);
+      z-index:1000; transition:transform .42s cubic-bezier(.32,.72,0,1);
+      max-height:85dvh; display:flex; flex-direction:column;
     }
-    .sheet.collapsed { transform: translateY(calc(100% - 84px)); }
-    .sheet.peek      { transform: translateY(calc(100% - 260px)); }
-    .sheet.expanded  { transform: translateY(0); }
+    .sheet.collapsed { transform:translateY(calc(100% - 80px)); }
+    .sheet.peek      { transform:translateY(calc(100% - 260px)); }
+    .sheet.expanded  { transform:translateY(0); }
 
-    .sheet-handle-wrap {
-      padding: 10px 0 4px; display: flex;
-      justify-content: center; flex-shrink: 0; cursor: pointer;
-    }
-    .sheet-handle { width: 36px; height: 5px; border-radius: 3px; background: var(--label4); }
+    .sheet-handle-wrap { padding:10px 0 4px; display:flex; justify-content:center; flex-shrink:0; cursor:pointer; }
+    .sheet-handle { width:36px; height:5px; border-radius:3px; background:var(--label4); }
+    .sheet-header { padding:0 16px 10px; flex-shrink:0; cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
+    .sheet-title { font-size:17px; font-weight:700; letter-spacing:-.4px; }
+    .sheet-count { font-size:13px; color:var(--label3); }
 
-    .sheet-header {
-      padding: 0 16px 10px; flex-shrink: 0; cursor: pointer;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .sheet-title { font-size: 17px; font-weight: 700; color: var(--label); letter-spacing: -0.4px; }
-    .sheet-count { font-size: 13px; color: var(--label3); }
+    /* DETAIL */
+    .detail-panel { padding:0 16px 14px; border-bottom:.5px solid var(--sep); display:none; flex-shrink:0; }
+    .detail-panel.visible { display:block; }
 
-    /* DETAIL PANEL */
-    .detail-panel { padding: 0 16px 12px; border-bottom: 0.5px solid var(--sep); display: none; }
-    .detail-panel.visible { display: block; }
-    .detail-summary {
-      font-size: 13px; color: var(--label2); line-height: 1.55;
-      margin-bottom: 10px; padding: 10px 12px;
-      background: var(--bg); border-radius: 8px;
-    }
+    .detail-name { font-size:17px; font-weight:700; letter-spacing:-.4px; margin-bottom:2px; }
+    .detail-addr { font-size:13px; color:var(--label3); margin-bottom:10px; }
 
-    /* Tags row */
-    .tags-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-    .tag {
-      display: flex; align-items: center; gap: 4px;
-      padding: 4px 9px; border-radius: 20px;
-      font-size: 11px; font-weight: 600; letter-spacing: -0.1px;
-    }
-    .tag-pay-yes  { background: rgba(175,82,222,0.12); color: var(--purple); }
-    .tag-pay-no   { background: rgba(60,60,67,0.1); color: var(--label3); }
-    .tag-pay-unk  { background: rgba(60,60,67,0.08); color: var(--label3); }
-    .tag-self     { background: rgba(0,122,255,0.1); color: var(--blue); }
-    .tag-attended { background: rgba(52,199,89,0.1); color: var(--green); }
-    .tag-white    { background: rgba(255,159,10,0.1); color: var(--yellow); }
+    .detail-scores { display:flex; gap:8px; margin-bottom:10px; }
+    .dscore { flex:1; border-radius:10px; padding:9px 11px; }
+    .dscore-label { font-size:10px; font-weight:600; color:var(--label3); text-transform:uppercase; letter-spacing:.3px; margin-bottom:4px; }
+    .dscore-row { display:flex; align-items:center; gap:7px; }
+    .dscore-num { font-size:22px; font-weight:800; letter-spacing:-.5px; line-height:1; }
+    .dscore-right { flex:1; }
+    .dscore-bar-bg { height:3px; background:rgba(0,0,0,.08); border-radius:2px; overflow:hidden; margin-bottom:3px; }
+    .dscore-bar { height:100%; border-radius:2px; }
+    .dscore-verdict { font-size:10px; font-weight:700; }
 
-    .detail-actions { display: flex; gap: 8px; }
-    .detail-btn {
-      flex: 1; padding: 10px; border-radius: 9px; border: none;
-      font-size: 14px; font-weight: 600; cursor: pointer;
-      text-decoration: none; display: flex; align-items: center;
-      justify-content: center; gap: 5px; letter-spacing: -0.2px;
-      transition: opacity 0.15s;
-    }
-    .detail-btn:active { opacity: 0.7; }
-    .detail-btn.nav { background: var(--blue); color: #fff; }
-    .detail-btn.reviews { background: var(--bg3); color: var(--label); }
+    .detail-tags { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+    .tag { display:flex; align-items:center; gap:4px; padding:4px 9px; border-radius:20px; font-size:11px; font-weight:600; }
+    .tag-pay-yes { background:rgba(175,82,222,.12); color:var(--purple); }
+    .tag-pay-no  { background:rgba(60,60,67,.1); color:var(--label3); }
+    .tag-pay-unk { background:rgba(60,60,67,.07); color:var(--label3); }
+    .tag-self    { background:rgba(0,122,255,.1); color:var(--blue); }
+    .tag-att     { background:rgba(52,199,89,.1); color:var(--green); }
+    .tag-white   { background:rgba(255,159,10,.1); color:var(--yellow); }
 
-    /* SCROLL LIST */
-    .station-scroll {
-      overflow-y: auto; flex: 1;
-      -webkit-overflow-scrolling: touch;
-      padding-bottom: calc(var(--safe-bottom) + 8px);
+    .detail-review {
+      background:var(--bg); border-radius:10px; padding:11px 12px;
+      font-size:13px; color:var(--label2); line-height:1.6; margin-bottom:10px;
     }
-    .station-item {
-      padding: 12px 16px; border-bottom: 0.5px solid var(--sep);
-      cursor: pointer; transition: background 0.1s; background: var(--bg2);
-    }
-    .station-item:active { background: var(--bg3); }
-    .station-item.selected { background: rgba(0,122,255,0.06); }
+    .detail-review-loading { color:var(--label3); font-style:italic; }
 
-    .s-row1 { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-    .brand-badge {
-      width: 36px; height: 36px; border-radius: 9px;
-      background: var(--bg3); display: flex; align-items: center;
-      justify-content: center; font-size: 10px; font-weight: 700;
-      color: var(--label2); flex-shrink: 0; letter-spacing: -0.3px;
+    .nav-actions { display:flex; gap:7px; margin-bottom:8px; }
+    .nav-btn {
+      flex:1; padding:10px 6px; border-radius:10px; border:none;
+      font-size:12px; font-weight:600; cursor:pointer; text-decoration:none;
+      display:flex; align-items:center; justify-content:center; gap:4px;
+      transition:opacity .15s; letter-spacing:-.1px;
     }
-    .s-meta { flex: 1; min-width: 0; }
-    .s-name {
-      font-size: 15px; font-weight: 600; color: var(--label);
-      letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    .nav-btn:active { opacity:.7; }
+    .nav-apple { background:var(--blue); color:#fff; }
+    .nav-google { background:#34a853; color:#fff; }
+    .nav-waze { background:#33ccff; color:#fff; }
+
+    .copy-addr-btn {
+      width:100%; padding:10px; border-radius:10px; border:none;
+      background:var(--bg3); color:var(--label2); font-size:13px; font-weight:600;
+      cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;
+      transition:opacity .15s;
     }
-    .s-addr {
-      font-size: 12px; color: var(--label3); white-space: nowrap;
-      overflow: hidden; text-overflow: ellipsis; margin-top: 1px;
+    .copy-addr-btn:active { opacity:.7; }
+    .copy-addr-btn.copied { background:rgba(52,199,89,.15); color:var(--green); }
+
+    /* STATION LIST */
+    .station-scroll { overflow-y:auto; flex:1; -webkit-overflow-scrolling:touch; padding-bottom:calc(var(--safe-bottom) + 8px); }
+    .station-item { padding:12px 16px; border-bottom:.5px solid var(--sep); cursor:pointer; background:var(--bg2); transition:background .1s; }
+    .station-item:active { background:var(--bg3); }
+    .station-item.selected { background:rgba(0,122,255,.06); }
+
+    .si-row1 { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+    .brand-badge { width:36px; height:36px; border-radius:9px; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--label2); flex-shrink:0; }
+    .si-meta { flex:1; min-width:0; }
+    .si-name { font-size:15px; font-weight:600; letter-spacing:-.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .si-addr { font-size:11px; color:var(--label3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+    .si-right { display:flex; flex-direction:column; align-items:flex-end; gap:3px; flex-shrink:0; }
+    .si-dist { font-size:12px; color:var(--label3); font-weight:500; }
+    .si-pay { font-size:15px; line-height:1; }
+
+    .si-scores { display:flex; gap:7px; }
+    .sc { flex:1; border-radius:8px; padding:7px 9px; }
+    .sc-label { font-size:9px; font-weight:700; color:var(--label3); text-transform:uppercase; letter-spacing:.3px; margin-bottom:3px; }
+    .sc-row { display:flex; align-items:center; gap:6px; }
+    .sc-num { font-size:18px; font-weight:800; letter-spacing:-.5px; line-height:1; }
+    .sc-right { flex:1; }
+    .sc-bar-bg { height:3px; background:rgba(0,0,0,.08); border-radius:2px; overflow:hidden; margin-bottom:2px; }
+    .sc-bar { height:100%; border-radius:2px; }
+    .sc-verdict { font-size:9px; font-weight:700; }
+
+    /* STATES */
+    .sheet-empty { padding:28px 16px; text-align:center; }
+    .sheet-empty-title { font-size:16px; font-weight:600; margin-bottom:5px; }
+    .sheet-empty-sub { font-size:13px; color:var(--label3); line-height:1.5; }
+    .loader { display:flex; align-items:center; justify-content:center; gap:10px; padding:20px; color:var(--label3); font-size:14px; }
+    .spinner { width:18px; height:18px; border:2px solid var(--bg3); border-top-color:var(--blue); border-radius:50%; animation:spin .7s linear infinite; flex-shrink:0; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* MARKERS */
+    .marker-pin { width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; color:#fff; box-shadow:0 2px 8px rgba(0,0,0,.28); border:2.5px solid #fff; cursor:pointer; transition:transform .2s,box-shadow .2s; }
+    .marker-pin.selected { transform:scale(1.3); box-shadow:0 4px 16px rgba(0,0,0,.32); }
+    .user-dot { width:18px; height:18px; border-radius:50%; background:var(--blue); border:3px solid #fff; box-shadow:0 0 0 4px rgba(0,122,255,.22); }
+
+    /* Color tokens */
+    .c-red{color:var(--red)}.f-red{background:var(--red)}.bg-red{background:rgba(255,59,48,.1)}
+    .c-orange{color:var(--orange)}.f-orange{background:var(--orange)}.bg-orange{background:rgba(255,107,0,.1)}
+    .c-yellow{color:var(--yellow)}.f-yellow{background:var(--yellow)}.bg-yellow{background:rgba(255,159,10,.1)}
+    .c-lime{color:var(--lime)}.f-lime{background:var(--lime)}.bg-lime{background:rgba(48,209,88,.1)}
+    .c-green{color:var(--green)}.f-green{background:var(--green)}.bg-green{background:rgba(52,199,89,.1)}
+
+    /* NAV MODAL */
+    .nav-modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:2000; display:none; align-items:flex-end; }
+    .nav-modal-bg.visible { display:flex; }
+    .nav-modal { background:var(--bg2); border-radius:13px 13px 0 0; padding:16px; width:100%; padding-bottom:calc(var(--safe-bottom) + 16px); }
+    .nav-modal-title { font-size:13px; color:var(--label3); text-align:center; margin-bottom:12px; font-weight:500; }
+    .nav-modal-btn {
+      display:flex; align-items:center; gap:12px; width:100%; padding:14px 16px;
+      border:none; background:var(--bg); border-radius:10px; margin-bottom:8px;
+      font-size:16px; font-weight:500; cursor:pointer; color:var(--label);
+      transition:background .1s;
     }
-    .s-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
-    .s-dist { font-size: 12px; color: var(--label3); font-weight: 500; }
-
-    /* Pay badge inline */
-    .pay-badge {
-      font-size: 14px; line-height: 1;
-    }
-
-    .scores-row { display: flex; gap: 8px; }
-    .score-chip { flex: 1; border-radius: 9px; padding: 8px 10px; }
-    .chip-label { font-size: 10px; font-weight: 600; color: var(--label3); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
-    .chip-row { display: flex; align-items: center; gap: 7px; }
-    .chip-num { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; line-height: 1; }
-    .chip-right { flex: 1; }
-    .bar-bg { height: 3px; background: rgba(0,0,0,0.08); border-radius: 2px; overflow: hidden; margin-bottom: 3px; }
-    .bar-fill { height: 100%; border-radius: 2px; }
-    .chip-verdict { font-size: 10px; font-weight: 600; }
-
-    .sheet-empty { padding: 28px 16px; text-align: center; }
-    .sheet-empty-title { font-size: 16px; font-weight: 600; color: var(--label); margin-bottom: 5px; }
-    .sheet-empty-sub { font-size: 13px; color: var(--label3); line-height: 1.5; }
-    .loader { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 20px; color: var(--label3); font-size: 14px; }
-    .spinner { width: 18px; height: 18px; border: 2px solid var(--bg3); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.7s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .marker-pin {
-      width: 38px; height: 38px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 800; color: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.28);
-      border: 2.5px solid #fff; cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .marker-pin.selected { transform: scale(1.25); box-shadow: 0 4px 16px rgba(0,0,0,0.32); }
-    .user-dot { width: 18px; height: 18px; border-radius: 50%; background: var(--blue); border: 3px solid #fff; box-shadow: 0 0 0 4px rgba(0,122,255,0.22); }
-
-    .c-red    { color: var(--red); }    .f-red    { background: var(--red); }    .bg-red    { background: rgba(255,59,48,0.1); }
-    .c-orange { color: var(--orange); } .f-orange { background: var(--orange); } .bg-orange { background: rgba(255,107,0,0.1); }
-    .c-yellow { color: var(--yellow); } .f-yellow { background: var(--yellow); } .bg-yellow { background: rgba(255,159,10,0.1); }
-    .c-lime   { color: var(--lime); }   .f-lime   { background: var(--lime); }   .bg-lime   { background: rgba(48,209,88,0.1); }
-    .c-green  { color: var(--green); }  .f-green  { background: var(--green); }  .bg-green  { background: rgba(52,199,89,0.1); }
+    .nav-modal-btn:active { background:var(--bg3); }
+    .nav-modal-btn span { font-size:22px; }
+    .nav-modal-cancel { width:100%; padding:14px; border:none; background:var(--bg3); border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; color:var(--label); margin-top:4px; }
+    .nav-modal-cancel:active { opacity:.7; }
   </style>
 </head>
 <body>
 <div id="app">
   <div class="status-spacer"></div>
-
   <div class="navbar">
     <div class="navbar-top">
       <div class="app-title">⛽ Benzina Radar</div>
-      <button class="locate-btn" id="locateBtn" onclick="startSearch()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
-        Cerca
-      </button>
+      <div class="btn-row">
+        <button class="btn-here" id="btnHere" onclick="searchHere()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
+          Cerca qui
+        </button>
+        <button class="btn-loc" id="btnLoc" onclick="locateMe()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+          Dove sono
+        </button>
+      </div>
     </div>
     <div class="radius-row">
       <span class="radius-label">Raggio</span>
       <div class="pill-group">
-        <button class="pill active" onclick="setRadius(1,this)">1 km</button>
+        <button class="pill" onclick="setRadius(1,this)">1 km</button>
         <button class="pill" onclick="setRadius(2,this)">2 km</button>
-        <button class="pill" onclick="setRadius(5,this)">5 km</button>
+        <button class="pill active" onclick="setRadius(5,this)">5 km</button>
         <button class="pill" onclick="setRadius(10,this)">10 km</button>
+        <button class="pill" onclick="setRadius(20,this)">20 km</button>
+        <button class="pill" onclick="setRadius(50,this)">50 km</button>
       </div>
     </div>
   </div>
 
-  <div id="map"></div>
+  <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;">
+    <div id="map" style="flex:1;"></div>
+    <button class="search-here-btn" id="searchHereBtn" onclick="searchHere()">🔍 Cerca in quest'area</button>
+  </div>
 
   <div class="sheet collapsed" id="sheet">
-    <div class="sheet-handle-wrap" onclick="toggleSheet()">
-      <div class="sheet-handle"></div>
-    </div>
+    <div class="sheet-handle-wrap" onclick="toggleSheet()"><div class="sheet-handle"></div></div>
     <div class="sheet-header" onclick="toggleSheet()">
       <div class="sheet-title" id="sheetTitle">Distributori vicini</div>
       <div class="sheet-count" id="sheetCount"></div>
     </div>
 
     <div class="detail-panel" id="detailPanel">
-      <div class="detail-summary" id="detailSummary"></div>
-      <div class="tags-row" id="detailTags"></div>
-      <div class="detail-actions">
-        <a class="detail-btn nav" id="detailNav" href="#" target="_blank">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-          Naviga
-        </a>
-        <a class="detail-btn reviews" id="detailReviews" href="#" target="_blank">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          Recensioni
-        </a>
+      <div class="detail-name" id="detailName"></div>
+      <div class="detail-addr" id="detailAddr"></div>
+      <div class="detail-scores" id="detailScores"></div>
+      <div class="detail-tags" id="detailTags"></div>
+      <div class="detail-review" id="detailReview"><span class="detail-review-loading">Caricamento recensione AI…</span></div>
+      <div class="nav-actions">
+        <button class="nav-btn nav-apple" onclick="openNav('apple')">🗺 Apple Maps</button>
+        <button class="nav-btn nav-google" onclick="openNav('google')">🌍 Google</button>
+        <button class="nav-btn nav-waze" onclick="openNav('waze')">🚗 Waze</button>
       </div>
+      <button class="copy-addr-btn" id="copyAddrBtn" onclick="copyAddress()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copia indirizzo
+      </button>
     </div>
 
-    <div class="station-scroll" id="stationScroll">
+    <div class="station-scroll">
       <div class="sheet-empty" id="sheetEmpty">
         <div class="sheet-empty-title">Nessuna ricerca</div>
-        <div class="sheet-empty-sub">Premi Cerca per trovare<br>distributori vicino a te</div>
+        <div class="sheet-empty-sub">Premi "Dove sono" per trovare<br>distributori vicino a te</div>
       </div>
-      <div id="loaderEl" style="display:none">
-        <div class="loader"><div class="spinner"></div>Analisi AI in corso…</div>
-      </div>
+      <div id="loaderEl" style="display:none"><div class="loader"><div class="spinner"></div>Analisi AI in corso…</div></div>
       <div id="stationList"></div>
     </div>
   </div>
 </div>
 
+<!-- NAV MODAL -->
+<div class="nav-modal-bg" id="navModal" onclick="closeNavModal(event)">
+  <div class="nav-modal">
+    <div class="nav-modal-title">Apri navigazione con</div>
+    <button class="nav-modal-btn" onclick="doNav('apple')"><span>🗺</span> Apple Maps</button>
+    <button class="nav-modal-btn" onclick="doNav('google')"><span>🌍</span> Google Maps</button>
+    <button class="nav-modal-btn" onclick="doNav('waze')"><span>🚗</span> Waze</button>
+    <button class="nav-modal-cancel" onclick="document.getElementById('navModal').classList.remove('visible')">Annulla</button>
+  </div>
+</div>
+
 <script>
-let map, userMarker, stationMarkers = [], stations = [], selectedIdx = null;
-let userLat = null, userLon = null, radiusKm = 1;
-let sheetState = 'collapsed';
+// ── STATE ──
+let map, userMarker, stationMarkers=[], stations=[], selectedIdx=null;
+let userLat=null, userLon=null, radiusKm=5;
+let sheetState='collapsed';
+let mapMoved=false;
+let currentStation=null;
 
-map = L.map('map', { zoomControl: false }).setView([45.89, 11.03], 13);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 19
+// ── MAP ──
+map = L.map('map',{zoomControl:false}).setView([45.48,12.23],12);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+  attribution:'© OpenStreetMap © CARTO', subdomains:'abcd', maxZoom:19
 }).addTo(map);
-map.on('click', () => { if (sheetState === 'expanded') setSheet('peek'); deselectAll(); });
 
-function setSheet(s) { sheetState = s; document.getElementById('sheet').className = `sheet ${s}`; }
-function toggleSheet() {
-  if (sheetState === 'collapsed') setSheet('peek');
-  else if (sheetState === 'peek') setSheet('expanded');
+map.on('movestart',()=>{
+  if (stations.length>0) {
+    mapMoved=true;
+    document.getElementById('searchHereBtn').classList.add('visible');
+  }
+});
+map.on('click',()=>{ if(sheetState==='expanded') setSheet('peek'); deselectAll(); });
+
+// ── AUTO-LOCATE ON LOAD ──
+window.addEventListener('load',()=>{
+  if (navigator.geolocation) locateMe();
+});
+
+// ── SHEET ──
+function setSheet(s){ sheetState=s; document.getElementById('sheet').className=`sheet ${s}`; }
+function toggleSheet(){
+  if(sheetState==='collapsed') setSheet('peek');
+  else if(sheetState==='peek') setSheet('expanded');
   else setSheet('peek');
 }
-function setRadius(km, btn) {
-  radiusKm = km;
-  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+
+// ── RADIUS ──
+function setRadius(km,btn){
+  radiusKm=km;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
 }
 
-function kmDist(a,b,c,d) {
-  const R=6371, dLat=(c-a)*Math.PI/180, dLon=(d-b)*Math.PI/180;
+// ── HELPERS ──
+function kmDist(a,b,c,d){
+  const R=6371,dLat=(c-a)*Math.PI/180,dLon=(d-b)*Math.PI/180;
   const x=Math.sin(dLat/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
-function fmtDist(km) { return km<1?`${Math.round(km*1000)} m`:`${km.toFixed(1)} km`; }
-
-function brandLabel(n,b) {
+function fmtDist(km){ return km<1?`${Math.round(km*1000)} m`:`${km.toFixed(1)} km`; }
+function brandLabel(n,b){
   const s=(n+b).toLowerCase();
-  if (s.includes('eni')||s.includes('agip')) return 'ENI';
-  if (s.includes('q8')||s.includes('kuwait')) return 'Q8';
-  if (s.includes('total')) return 'TTE';
-  if (s.includes('shell')) return 'SHL';
-  if (s.includes('tamoil')) return 'TAM';
-  if (s.includes('esso')||s.includes('exxon')) return 'ESO';
-  if (s.includes('api')) return 'API';
-  if (s.includes(' ip')||s.includes('italiana')) return 'IP';
+  if(s.includes('eni')||s.includes('agip')) return 'ENI';
+  if(s.includes('q8')||s.includes('kuwait')) return 'Q8';
+  if(s.includes('total')) return 'TTE';
+  if(s.includes('shell')) return 'SHL';
+  if(s.includes('tamoil')) return 'TAM';
+  if(s.includes('esso')||s.includes('exxon')) return 'ESO';
+  if(s.includes('api')) return 'API';
+  if(s.includes(' ip')||s.includes('italiana petrol')) return 'IP';
   return '⛽';
 }
-
-function isWhiteBrand(n,b) {
+function isWhite(n,b){
   const s=(n+b).toLowerCase();
-  return !['eni','agip','q8','kuwait','total','shell','tamoil','esso','exxon',' ip','italiana','api'].some(k=>s.includes(k));
+  return !['eni','agip','q8','kuwait','total','shell','tamoil','esso','exxon','italiana petrol','api'].some(k=>s.includes(k))&&!s.includes(' ip');
 }
-
-function scoreColor(s) {
-  if (s>=4.5) return 'green';
-  if (s>=3.5) return 'lime';
-  if (s>=2.5) return 'yellow';
-  if (s>=1.5) return 'orange';
+function scoreColor(s){
+  if(s>=4.5) return 'green';
+  if(s>=3.5) return 'lime';
+  if(s>=2.5) return 'yellow';
+  if(s>=1.5) return 'orange';
   return 'red';
 }
-function scoreVerdict(s) {
-  if (s>=4.5) return 'Ottimo';
-  if (s>=3.5) return 'Buono';
-  if (s>=2.5) return 'Discreto';
-  if (s>=1.5) return 'Dubbioso';
+function scoreVerdict(s){
+  if(s>=4.5) return 'Ottimo';
+  if(s>=3.5) return 'Buono';
+  if(s>=2.5) return 'Discreto';
+  if(s>=1.5) return 'Dubbioso';
   return 'Evita';
 }
-function pinColor(b,d) {
+function pinColor(b,d){
   const avg=(b+d)/2;
-  if (avg>=4.5) return '#34c759';
-  if (avg>=3.5) return '#30d158';
-  if (avg>=2.5) return '#ff9f0a';
-  if (avg>=1.5) return '#ff6b00';
+  if(avg>=4.5) return '#34c759';
+  if(avg>=3.5) return '#30d158';
+  if(avg>=2.5) return '#ff9f0a';
+  if(avg>=1.5) return '#ff6b00';
   return '#ff3b30';
 }
-
-// Parse OSM tags for payment/contactless info
-function parsePayment(tags) {
-  if (!tags) return 'unknown';
-  const yes = ['payment:contactless','payment:nfc','payment:apple_pay','payment:cards'];
-  const no  = ['payment:cash_only'];
-  if (no.some(k => tags[k]==='yes')) return 'no';
-  if (yes.some(k => tags[k]==='yes')) return 'yes';
-  if (tags['payment:contactless']==='no') return 'no';
+function parsePayment(tags){
+  if(!tags) return 'unknown';
+  if(['payment:contactless','payment:nfc','payment:apple_pay','payment:credit_cards'].some(k=>tags[k]==='yes')) return 'yes';
+  if(tags['payment:contactless']==='no'||tags['payment:cash_only']==='yes') return 'no';
+  return 'unknown';
+}
+function parseAttended(tags){
+  if(!tags) return 'unknown';
+  if(tags['attended']==='yes') return 'attended';
+  if(tags['self_service']==='yes') return 'self';
   return 'unknown';
 }
 
-function parseAttended(tags) {
-  if (!tags) return 'unknown';
-  if (tags['self_service']==='yes' && tags['attended']==='no') return 'self';
-  if (tags['attended']==='yes') return 'attended';
-  if (tags['self_service']==='yes') return 'self';
-  return 'unknown';
+// ── MAX STATIONS BY ZOOM ──
+function maxByZoom(){
+  const z=map.getZoom();
+  if(z>=15) return 20;
+  if(z>=13) return 12;
+  if(z>=11) return 8;
+  return 5;
 }
 
-async function startSearch() {
-  const btn = document.getElementById('locateBtn');
-  btn.disabled = true; btn.textContent = '…';
+// ── MIN SCORE FILTER BY RADIUS ──
+function minScoreByRadius(){
+  if(radiusKm>=20) return 3.8;
+  if(radiusKm>=10) return 3.2;
+  return 0;
+}
 
-  navigator.geolocation.getCurrentPosition(async pos => {
-    userLat = pos.coords.latitude; userLon = pos.coords.longitude;
+// ── LOCATE ME ──
+function locateMe(){
+  const btn=document.getElementById('btnLoc');
+  btn.disabled=true;
+  navigator.geolocation.getCurrentPosition(pos=>{
+    userLat=pos.coords.latitude; userLon=pos.coords.longitude;
+    placeUserMarker(userLat,userLon);
+    map.setView([userLat,userLon],14,{animate:true});
+    btn.disabled=false;
+    searchFromPoint(userLat,userLon);
+  },()=>{
+    btn.disabled=false;
+    alert('GPS non disponibile. Abilita in Impostazioni → Privacy → Localizzazione → Safari.');
+  },{timeout:12000,enableHighAccuracy:true});
+}
 
-    if (userMarker) map.removeLayer(userMarker);
-    userMarker = L.marker([userLat,userLon], {
-      icon: L.divIcon({ html:'<div class="user-dot"></div>', className:'', iconSize:[18,18], iconAnchor:[9,9] }),
-      zIndexOffset: 1000
-    }).addTo(map);
-    map.setView([userLat,userLon], 14, { animate:true });
+function placeUserMarker(lat,lon){
+  if(userMarker) map.removeLayer(userMarker);
+  userMarker=L.marker([lat,lon],{
+    icon:L.divIcon({html:'<div class="user-dot"></div>',className:'',iconSize:[18,18],iconAnchor:[9,9]}),
+    zIndexOffset:1000
+  }).addTo(map);
+}
 
-    stationMarkers.forEach(m=>map.removeLayer(m));
-    stationMarkers=[]; stations=[]; selectedIdx=null;
+// ── SEARCH HERE (map center) ──
+function searchHere(){
+  const c=map.getCenter();
+  document.getElementById('searchHereBtn').classList.remove('visible');
+  mapMoved=false;
+  searchFromPoint(c.lat,c.lng);
+}
 
-    document.getElementById('sheetEmpty').style.display='none';
-    document.getElementById('loaderEl').style.display='block';
-    document.getElementById('stationList').innerHTML='';
-    document.getElementById('detailPanel').classList.remove('visible');
-    document.getElementById('sheetTitle').textContent='Ricerca in corso…';
-    document.getElementById('sheetCount').textContent='';
-    setSheet('peek');
+// ── CORE SEARCH ──
+async function searchFromPoint(lat,lon){
+  stationMarkers.forEach(m=>map.removeLayer(m));
+  stationMarkers=[]; stations=[]; selectedIdx=null; currentStation=null;
 
-    try {
-      const url=`https://overpass-api.de/api/interpreter?data=[out:json];node[amenity=fuel](around:${radiusKm*1000},${userLat},${userLon});out body;`;
-      const data=await (await fetch(url)).json();
-      const nodes=(data.elements||[])
-        .map(n=>({
-          id:n.id, lat:n.lat, lon:n.lon,
-          name:n.tags?.name||n.tags?.brand||'Distributore',
-          brand:n.tags?.brand||'',
-          address:[n.tags?.['addr:street'],n.tags?.['addr:housenumber']].filter(Boolean).join(' ')||'',
-          dist:kmDist(userLat,userLon,n.lat,n.lon),
-          payment:parsePayment(n.tags),
-          attended:parseAttended(n.tags),
-          tags:n.tags||{}
-        }))
-        .sort((a,b)=>a.dist-b.dist).slice(0,7);
+  document.getElementById('sheetEmpty').style.display='none';
+  document.getElementById('loaderEl').style.display='block';
+  document.getElementById('stationList').innerHTML='';
+  document.getElementById('detailPanel').classList.remove('visible');
+  document.getElementById('sheetTitle').textContent='Ricerca in corso…';
+  document.getElementById('sheetCount').textContent='';
+  setSheet('peek');
 
-      if (!nodes.length) {
-        document.getElementById('loaderEl').style.display='none';
-        document.getElementById('sheetTitle').textContent='Nessun distributore';
-        document.getElementById('sheetEmpty').style.display='block';
-        document.getElementById('sheetEmpty').querySelector('.sheet-empty-title').textContent='Zona vuota';
-        document.getElementById('sheetEmpty').querySelector('.sheet-empty-sub').textContent='Nessun distributore trovato.\nProva ad aumentare il raggio.';
-        resetBtn(btn); return;
-      }
+  try {
+    const url=`https://overpass-api.de/api/interpreter?data=[out:json];node[amenity=fuel](around:${radiusKm*1000},${lat},${lon});out body;`;
+    const data=await(await fetch(url)).json();
+    let nodes=(data.elements||[]).map(n=>({
+      id:n.id, lat:n.lat, lon:n.lon,
+      name:n.tags?.name||n.tags?.brand||'Distributore',
+      brand:n.tags?.brand||'',
+      address:buildAddress(n.tags),
+      dist:userLat?kmDist(userLat,userLon,n.lat,n.lon):kmDist(lat,lon,n.lat,n.lon),
+      payment:parsePayment(n.tags),
+      attended:parseAttended(n.tags),
+      tags:n.tags||{}
+    })).sort((a,b)=>a.dist-b.dist);
 
-      document.getElementById('sheetTitle').textContent='Analisi AI…';
-      stations = await analyzeStations(nodes);
-    } catch(e) {
-      console.error(e);
-      document.getElementById('loaderEl').style.display='none';
-      document.getElementById('sheetTitle').textContent='Errore di rete';
-      resetBtn(btn); return;
+    // Filter by min score for large radii (pre-filter by brand heuristic)
+    const minS=minScoreByRadius();
+    if(minS>0){
+      nodes=nodes.filter(n=>!isWhite(n.name,n.brand)||minS<3.5);
     }
 
+    nodes=nodes.slice(0,maxByZoom());
+
+    if(!nodes.length){
+      document.getElementById('loaderEl').style.display='none';
+      document.getElementById('sheetTitle').textContent='Nessun distributore';
+      document.getElementById('sheetEmpty').style.display='block';
+      document.getElementById('sheetEmpty').querySelector('.sheet-empty-title').textContent='Zona vuota';
+      document.getElementById('sheetEmpty').querySelector('.sheet-empty-sub').textContent='Nessun distributore trovato.\nProva ad aumentare il raggio.';
+      return;
+    }
+
+    document.getElementById('sheetTitle').textContent='Analisi AI…';
+    stations=await analyzeStations(nodes);
+
+    // Filter out poor stations for big radii
+    if(minS>0) stations=stations.filter(s=>((s.benzina+s.diesel)/2)>=minS);
+
+  } catch(e){
+    console.error(e);
     document.getElementById('loaderEl').style.display='none';
-    renderAll();
-    resetBtn(btn);
-  }, () => {
-    alert('GPS non disponibile. Abilita la localizzazione in Safari → Impostazioni.');
-    resetBtn(btn);
-  }, { timeout:12000, enableHighAccuracy:true });
+    document.getElementById('sheetTitle').textContent='Errore di rete';
+    document.getElementById('sheetCount').textContent='Riprova';
+    return;
+  }
+
+  document.getElementById('loaderEl').style.display='none';
+  if(!stations.length){
+    document.getElementById('sheetTitle').textContent='Nessun risultato';
+    document.getElementById('sheetEmpty').style.display='block';
+    return;
+  }
+  renderAll();
 }
 
-function resetBtn(btn) {
-  btn.disabled=false;
-  btn.innerHTML=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg> Aggiorna`;
+function buildAddress(tags){
+  if(!tags) return '';
+  const parts=[];
+  if(tags['addr:street']) parts.push(tags['addr:street']);
+  if(tags['addr:housenumber']) parts.push(tags['addr:housenumber']);
+  if(tags['addr:city']) parts.push(tags['addr:city']);
+  return parts.join(', ')||'';
 }
 
-async function analyzeStations(nodes) {
-  const prompt = `Sei un esperto di qualità carburante in Italia. Valuta l'affidabilità di questi distributori con rating separati BENZINA e DIESEL da 0.0 a 5.0.
+// ── AI ANALYSIS ──
+async function analyzeStations(nodes){
+  const prompt=`Sei un esperto italiano di qualità carburante con conoscenza specifica dei distributori in Italia, Veneto incluso.
 
-REGOLE IMPORTANTI:
-1. I distributori bianchi (no-brand) NON vengono penalizzati automaticamente. Se non ci sono segnalazioni note di problemi nella zona, ricevono un rating neutro (3.5 benzina, 3.2 diesel).
-2. Abbassa il rating SOLO se ci sono motivi concreti: segnalazioni note di qualità scadente, zona ad alto rischio frodi carburante, gestione sospetta.
-3. Il diesel ha sempre rischio contaminazione leggermente maggiore: abbassa diesel di 0.2–0.3 rispetto benzina per stesso distributore.
-4. Brand noti (ENI, Q8, IP, Shell, Esso, TotalEnergies, API): base alta 4.0–4.5, riduci solo se ci sono problemi noti specifici.
-5. Il pagamento contactless/Apple Pay è un indicatore positivo di gestione moderna e professionale (+0.1 al rating).
+Analizza questi distributori e assegna rating BENZINA e DIESEL separati da 0.0 a 5.0.
+
+REGOLE FONDAMENTALI:
+1. Usa una scala DIFFERENZIATA. Non tutti i distributori sono uguali. Evita di assegnare rating simili a tutti.
+2. Brand affidabili (ENI/Agip, Q8, IP, Shell, Esso, TotalEnergies, API): base 3.8–4.5 benzina, 3.5–4.2 diesel.
+3. Bianchi no-brand con gestione sconosciuta: base 3.0–3.5 benzina, 2.7–3.2 diesel. NON penalizzare automaticamente se non ci sono segnalazioni note.
+4. Distributori con nomi che richiamano supermercati o discount (es. Auchan, Vega, Conad, Lidl): base più bassa 2.5–3.2, spesso riforniti con carburante di qualità inferiore.
+5. Distributori self-service h24 spesso hanno serbatoi meno manutenuti: -0.2.
+6. Diesel ha sempre rischio contaminazione leggermente maggiore: -0.2/0.3 vs benzina.
+7. Accetta contactless/NFC: +0.1 (indica gestione moderna).
+8. Il rating 5.0 è riservato a impianti con eccellenza documentata. Il 4.5+ va a brand noti in ottimo stato. Sii realistico.
+9. Distribuisci i rating in modo che ci sia VARIANZA tra i vari distributori — non appiattire tutto su 3.0.
 
 Stazioni:
-${nodes.map((n,i)=>`${i}. "${n.name}" brand:"${n.brand||'nessuno'}" pagamento_contactless:${n.payment} self_service:${n.attended}`).join('\n')}
+${nodes.map((n,i)=>`${i}. Nome:"${n.name}" Brand:"${n.brand||'nessuno'}" Indirizzo:"${n.address}" Pagamento_contactless:${n.payment} Servizio:${n.attended}`).join('\n')}
 
-Rispondi SOLO JSON array, zero testo extra, zero markdown:
-[{"idx":0,"benzina":4.1,"diesel":3.8,"summary":"max 20 parole in italiano su qualità e pagamento","flag":"ok","pay_note":"accetta contactless"|"solo contanti"|"pagamento non verificato"}]
+Rispondi SOLO con JSON array, zero testo extra, zero markdown backtick:
+[{"idx":0,"benzina":4.2,"diesel":3.9,"summary":"sintesi 15-20 parole su qualità e pagamento","flag":"ok","pay_note":"accetta contactless"}]
 flag: ok | caution | avoid`;
 
   try {
     const r=await fetch("https://api.anthropic.com/v1/messages",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        model:"claude-sonnet-4-20250514", max_tokens:900,
-        messages:[{role:"user",content:prompt}]
-      })
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})
     });
     const d=await r.json();
     const txt=d.content?.find(b=>b.type==='text')?.text||'[]';
     const ratings=JSON.parse(txt.replace(/```json|```/g,'').trim());
     return nodes.map((n,i)=>{
-      const rt=ratings.find(x=>x.idx===i)||{benzina:3.2,diesel:2.9,summary:'Analisi non disponibile.',flag:'caution',pay_note:'pagamento non verificato'};
-      return {...n,...rt};
+      const rt=ratings.find(x=>x.idx===i)||{benzina:3.0,diesel:2.7,summary:'Analisi non disponibile.',flag:'caution',pay_note:'pagamento non verificato'};
+      return{...n,...rt};
     });
-  } catch {
+  } catch(e){
     return nodes.map(n=>({...n,benzina:3.0,diesel:2.7,summary:'Analisi AI non disponibile.',flag:'caution',pay_note:'pagamento non verificato'}));
   }
 }
 
-function payIcon(s) {
-  if (!s) return '❓';
-  const l = s.toLowerCase();
-  if (l.includes('contactless') || l.includes('accetta')) return '💳';
-  if (l.includes('contanti') || l.includes('cash')) return '💵';
-  return '❓';
+// ── AI REVIEW (per singolo distributore) ──
+async function loadReview(station){
+  const el=document.getElementById('detailReview');
+  el.innerHTML='<span class="detail-review-loading">Caricamento recensione AI…</span>';
+
+  const prompt=`Sei un esperto di qualità carburante in Italia. Scrivi una breve recensione (3-4 frasi, max 80 parole) del distributore "${station.name}" in "${station.address}".
+Considera: brand "${station.brand||'no-brand'}", rating benzina ${station.benzina}/5, rating diesel ${station.diesel}/5, pagamento: ${station.pay_note}.
+Sii specifico e utile per chi deve decidere se fermarsi. Menziona pregi e difetti. Scrivi in italiano, tono diretto e pratico.`;
+
+  try {
+    const r=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:200,messages:[{role:"user",content:prompt}]})
+    });
+    const d=await r.json();
+    const txt=d.content?.find(b=>b.type==='text')?.text||'Recensione non disponibile.';
+    el.textContent=txt;
+  } catch {
+    el.textContent='Recensione AI non disponibile al momento.';
+  }
 }
 
-function payTagClass(s) {
-  if (!s) return 'tag-pay-unk';
-  const l = s.toLowerCase();
-  if (l.includes('contactless') || l.includes('accetta')) return 'tag-pay-yes';
-  if (l.includes('contanti') || l.includes('cash')) return 'tag-pay-no';
-  return 'tag-pay-unk';
-}
-
-function renderAll() {
+// ── RENDER ──
+function renderAll(){
   stationMarkers.forEach(m=>map.removeLayer(m));
   stationMarkers=[];
 
@@ -493,57 +575,50 @@ function renderAll() {
     const col=pinColor(s.benzina,s.diesel);
     const avg=((s.benzina+s.diesel)/2).toFixed(1);
     const m=L.marker([s.lat,s.lon],{
-      icon:L.divIcon({
-        html:`<div class="marker-pin" id="pin-${i}" style="background:${col}">${avg}</div>`,
-        className:'', iconSize:[38,38], iconAnchor:[19,19]
-      })
+      icon:L.divIcon({html:`<div class="marker-pin" id="pin-${i}" style="background:${col}">${avg}</div>`,className:'',iconSize:[38,38],iconAnchor:[19,19]})
     }).addTo(map);
     m.on('click',()=>selectStation(i));
     stationMarkers.push(m);
   });
 
-  const bounds=L.latLngBounds([[userLat,userLon],...stations.map(s=>[s.lat,s.lon])]);
-  map.fitBounds(bounds,{padding:[60,60],maxZoom:15});
-
   const list=document.getElementById('stationList');
   list.innerHTML='';
   stations.forEach((s,i)=>{
-    const bc=scoreColor(s.benzina), dc=scoreColor(s.diesel);
-    const bPct=(s.benzina/5)*100, dPct=(s.diesel/5)*100;
-    const white=isWhiteBrand(s.name,s.brand);
+    const bc=scoreColor(s.benzina),dc=scoreColor(s.diesel);
+    const bPct=(s.benzina/5)*100,dPct=(s.diesel/5)*100;
     const pIcon=payIcon(s.pay_note);
     const div=document.createElement('div');
     div.className='station-item'; div.id=`item-${i}`;
     div.innerHTML=`
-      <div class="s-row1">
+      <div class="si-row1">
         <div class="brand-badge">${brandLabel(s.name,s.brand)}</div>
-        <div class="s-meta">
-          <div class="s-name">${s.name}</div>
-          <div class="s-addr">${s.address||'Indirizzo non disponibile'}</div>
+        <div class="si-meta">
+          <div class="si-name">${s.name}</div>
+          <div class="si-addr">${s.address||'Indirizzo non disponibile'}</div>
         </div>
-        <div class="s-right">
-          <div class="s-dist">${fmtDist(s.dist)}</div>
-          <div class="pay-badge" title="${s.pay_note||''}">${pIcon}</div>
+        <div class="si-right">
+          <div class="si-dist">${fmtDist(s.dist)}</div>
+          <div class="si-pay">${pIcon}</div>
         </div>
       </div>
-      <div class="scores-row">
-        <div class="score-chip bg-${bc}">
-          <div class="chip-label">Benzina</div>
-          <div class="chip-row">
-            <div class="chip-num c-${bc}">${s.benzina.toFixed(1)}</div>
-            <div class="chip-right">
-              <div class="bar-bg"><div class="bar-fill f-${bc}" style="width:${bPct}%"></div></div>
-              <div class="chip-verdict c-${bc}">${scoreVerdict(s.benzina)}</div>
+      <div class="si-scores">
+        <div class="sc bg-${bc}">
+          <div class="sc-label">Benzina</div>
+          <div class="sc-row">
+            <div class="sc-num c-${bc}">${s.benzina.toFixed(1)}</div>
+            <div class="sc-right">
+              <div class="sc-bar-bg"><div class="sc-bar f-${bc}" style="width:${bPct}%"></div></div>
+              <div class="sc-verdict c-${bc}">${scoreVerdict(s.benzina)}</div>
             </div>
           </div>
         </div>
-        <div class="score-chip bg-${dc}">
-          <div class="chip-label">Diesel</div>
-          <div class="chip-row">
-            <div class="chip-num c-${dc}">${s.diesel.toFixed(1)}</div>
-            <div class="chip-right">
-              <div class="bar-bg"><div class="bar-fill f-${dc}" style="width:${dPct}%"></div></div>
-              <div class="chip-verdict c-${dc}">${scoreVerdict(s.diesel)}</div>
+        <div class="sc bg-${dc}">
+          <div class="sc-label">Diesel</div>
+          <div class="sc-row">
+            <div class="sc-num c-${dc}">${s.diesel.toFixed(1)}</div>
+            <div class="sc-right">
+              <div class="sc-bar-bg"><div class="sc-bar f-${dc}" style="width:${dPct}%"></div></div>
+              <div class="sc-verdict c-${dc}">${scoreVerdict(s.diesel)}</div>
             </div>
           </div>
         </div>
@@ -557,40 +632,117 @@ function renderAll() {
   setSheet('peek');
 }
 
-function selectStation(i) {
+function payIcon(s){
+  if(!s) return '❓';
+  const l=s.toLowerCase();
+  if(l.includes('contactless')||l.includes('accetta')||l.includes('nfc')) return '💳';
+  if(l.includes('contanti')||l.includes('cash')||l.includes('solo')) return '💵';
+  return '❓';
+}
+
+function selectStation(i){
   selectedIdx=i;
-  const s=stations[i];
+  currentStation=stations[i];
+  const s=currentStation;
+
   document.querySelectorAll('.station-item').forEach(el=>el.classList.remove('selected'));
   const item=document.getElementById(`item-${i}`);
-  if (item) { item.classList.add('selected'); item.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+  if(item){ item.classList.add('selected'); item.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+
   stationMarkers.forEach((_,j)=>{
-    const pin=document.getElementById(`pin-${j}`);
-    if (pin) pin.classList.toggle('selected',j===i);
+    const p=document.getElementById(`pin-${j}`);
+    if(p) p.classList.toggle('selected',j===i);
   });
   map.panTo([s.lat,s.lon],{animate:true,duration:0.4});
 
-  // Build tags
-  const tags=[];
-  const pClass=payTagClass(s.pay_note);
-  const pIcon=payIcon(s.pay_note);
-  tags.push(`<span class="tag ${pClass}">${pIcon} ${s.pay_note||'Pagamento non verificato'}</span>`);
-  if (s.attended==='self') tags.push(`<span class="tag tag-self">🤖 Self service</span>`);
-  else if (s.attended==='attended') tags.push(`<span class="tag tag-attended">👤 Con operatore</span>`);
-  if (isWhiteBrand(s.name,s.brand)) tags.push(`<span class="tag tag-white">⚪ No-brand</span>`);
+  // Detail panel
+  document.getElementById('detailName').textContent=s.name;
+  document.getElementById('detailAddr').textContent=s.address||'Indirizzo non disponibile';
 
-  document.getElementById('detailSummary').textContent=s.summary;
+  // Scores
+  const bc=scoreColor(s.benzina),dc=scoreColor(s.diesel);
+  document.getElementById('detailScores').innerHTML=`
+    <div class="dscore bg-${bc}">
+      <div class="dscore-label">Benzina</div>
+      <div class="dscore-row">
+        <div class="dscore-num c-${bc}">${s.benzina.toFixed(1)}</div>
+        <div class="dscore-right">
+          <div class="dscore-bar-bg"><div class="dscore-bar f-${bc}" style="width:${(s.benzina/5*100)}%"></div></div>
+          <div class="dscore-verdict c-${bc}">${scoreVerdict(s.benzina)}</div>
+        </div>
+      </div>
+    </div>
+    <div class="dscore bg-${dc}">
+      <div class="dscore-label">Diesel</div>
+      <div class="dscore-row">
+        <div class="dscore-num c-${dc}">${s.diesel.toFixed(1)}</div>
+        <div class="dscore-right">
+          <div class="dscore-bar-bg"><div class="dscore-bar f-${dc}" style="width:${(s.diesel/5*100)}%"></div></div>
+          <div class="dscore-verdict c-${dc}">${scoreVerdict(s.diesel)}</div>
+        </div>
+      </div>
+    </div>`;
+
+  // Tags
+  const tags=[];
+  const pIcon=payIcon(s.pay_note);
+  const pClass=s.pay_note&&(s.pay_note.toLowerCase().includes('contactless')||s.pay_note.toLowerCase().includes('accetta'))?'tag-pay-yes':s.pay_note&&s.pay_note.toLowerCase().includes('contanti')?'tag-pay-no':'tag-pay-unk';
+  tags.push(`<span class="tag ${pClass}">${pIcon} ${s.pay_note||'Pagamento non verificato'}</span>`);
+  if(s.attended==='self') tags.push(`<span class="tag tag-self">🤖 Self service</span>`);
+  else if(s.attended==='attended') tags.push(`<span class="tag tag-att">👤 Con operatore</span>`);
+  if(isWhite(s.name,s.brand)) tags.push(`<span class="tag tag-white">⚪ No-brand</span>`);
   document.getElementById('detailTags').innerHTML=tags.join('');
-  document.getElementById('detailNav').href=`https://maps.apple.com/?daddr=${s.lat},${s.lon}&dirflg=d`;
-  document.getElementById('detailReviews').href=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name+' '+s.address)}`;
+
+  document.getElementById('copyAddrBtn').textContent='📋 Copia indirizzo';
+  document.getElementById('copyAddrBtn').className='copy-addr-btn';
+
   document.getElementById('detailPanel').classList.add('visible');
   setSheet('expanded');
+
+  // Load AI review async
+  loadReview(s);
 }
 
-function deselectAll() {
-  selectedIdx=null;
+function deselectAll(){
+  selectedIdx=null; currentStation=null;
   document.querySelectorAll('.station-item').forEach(el=>el.classList.remove('selected'));
   stationMarkers.forEach((_,j)=>{ const p=document.getElementById(`pin-${j}`); if(p) p.classList.remove('selected'); });
   document.getElementById('detailPanel').classList.remove('visible');
+}
+
+// ── NAVIGATION ──
+function openNav(type){ doNav(type); }
+
+function doNav(type){
+  if(!currentStation) return;
+  const s=currentStation;
+  const addr=encodeURIComponent(s.address||`${s.lat},${s.lon}`);
+  const coord=`${s.lat},${s.lon}`;
+  let url='';
+  if(type==='apple') url=`https://maps.apple.com/?daddr=${coord}&dirflg=d`;
+  else if(type==='google') url=`https://www.google.com/maps/dir/?api=1&destination=${coord}`;
+  else if(type==='waze') url=`https://waze.com/ul?ll=${coord}&navigate=yes`;
+  if(url) window.open(url,'_blank');
+  document.getElementById('navModal').classList.remove('visible');
+}
+
+function closeNavModal(e){
+  if(e.target===document.getElementById('navModal'))
+    document.getElementById('navModal').classList.remove('visible');
+}
+
+// ── COPY ADDRESS ──
+function copyAddress(){
+  if(!currentStation) return;
+  const addr=currentStation.address||`${currentStation.lat}, ${currentStation.lon}`;
+  navigator.clipboard.writeText(addr).then(()=>{
+    const btn=document.getElementById('copyAddrBtn');
+    btn.className='copy-addr-btn copied';
+    btn.innerHTML='✓ Copiato!';
+    setTimeout(()=>{ btn.className='copy-addr-btn'; btn.innerHTML='📋 Copia indirizzo'; },2000);
+  }).catch(()=>{
+    prompt('Copia questo indirizzo:',addr);
+  });
 }
 </script>
 </body>
