@@ -1,6 +1,3 @@
-// netlify/functions/analyze.js
-// Serverless function — runs server-side with API key secure
-
 exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -8,88 +5,87 @@ exports.handler = async (event) => {
     'Content-Type': 'application/json'
   };
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
-  }
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
+  if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: '{"error":"Method not allowed"}' };
 
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
-  }
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return { statusCode: 500, headers, body: '{"error":"GEMINI_API_KEY not configured"}' };
 
   try {
     const { stations, mode } = JSON.parse(event.body);
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-
-    if (!apiKey) {
-      return { statusCode: 500, headers, body: JSON.stringify({ error: 'API key not configured' }) };
-    }
 
     let prompt;
 
     if (mode === 'review') {
-      // Single station deep review
       const s = stations[0];
-      prompt = `Cerca recensioni del distributore di carburante "${s.name}" in "${s.address || s.lat + ',' + s.lon}" Italia.
-Trova: problemi con benzina/diesel (acqua, sporco, iniettori), recensioni positive/negative, pagamenti accettati.
-Scrivi 4-5 frasi in italiano: reputazione basata su dati trovati, problemi specifici citati, giudizio su benzina (${s.benzina}/5) e diesel (${s.diesel}/5), consiglio finale pratico.
-Sii diretto e specifico. Se non trovi nulla di specifico, di' che non ci sono segnalazioni note.`;
+      prompt = `Sei un esperto di qualità carburante in Italia. Analizza il distributore "${s.name}" in "${s.address || 'Italia'}" e scrivi una recensione pratica di 4-5 frasi in italiano.
+
+Considera: brand "${s.brand || 'no-brand'}", rating benzina ${s.benzina}/5, rating diesel ${s.diesel}/5.
+Basati sulla reputazione nota del brand in Italia, rischi tipici (acqua nel diesel, serbatoi sporchi), qualità gestione.
+Concludi con un consiglio diretto: fermarsi o evitare.`;
+
     } else {
-      // Batch analysis
       const list = stations.map((n, i) =>
-        `${i}. "${n.name}"${n.brand ? ' (' + n.brand + ')' : ''} - ${n.address || 'indirizzo non noto'} - contactless:${n.payment} - servizio:${n.attended}`
+        `${i}. "${n.name}"${n.brand ? ' (brand: ' + n.brand + ')' : ' (no-brand)'} - ${n.address || 'indirizzo non noto'} - contactless:${n.payment} - servizio:${n.attended}`
       ).join('\n');
 
-      prompt = `Sei un esperto di qualità carburante in Italia. Analizza questi distributori cercando informazioni reali online.
+      prompt = `Sei un esperto italiano di qualità carburante. Valuta questi distributori con rating BENZINA e DIESEL separati da 0.0 a 5.0.
 
 DISTRIBUTORI:
 ${list}
 
-Per i distributori con nomi noti, cerca recensioni specifiche. Per ognuno considera:
-- Brand: ENI/Agip/Q8/IP/Shell/Esso/TotalEnergies/API = base alta (3.8-4.5 benzina)
-- Distributori supermercato (Auchan/Vega/Coop/Conad/Iper) = base bassa (2.3-3.2)  
-- No-brand senza segnalazioni = neutro (3.0-3.5)
-- Problemi noti (acqua nel diesel, iniettori rovinati) = abbassa di 1.0-1.5
-- Diesel sempre -0.2/-0.3 rispetto a benzina (rischio contaminazione)
-- Self service h24 = -0.1
-- Contactless accettato = +0.1
-USA VARIANZA REALE — non dare lo stesso voto a tutti. Distribuisci i rating in modo realistico.
+CRITERI — USA VARIANZA REALE, non dare lo stesso voto a tutti:
+- ENI/Agip/Q8/IP/Shell/Esso/TotalEnergies/API affidabili: 3.9-4.4 benzina
+- Brand noti con gestione locale variabile: 3.5-4.0
+- No-brand senza segnalazioni note: 3.0-3.5
+- Distributori supermercato (Auchan, Vega, Coop, Conad, Iper, Lidl): 2.2-3.1
+- Problemi noti italiani (acqua carburante, iniettori rovinati): 1.5-2.5
+- Diesel sempre -0.2/-0.3 vs benzina (rischio contaminazione maggiore)
+- Self service h24: -0.15
+- Contactless accettato: +0.1
 
-Rispondi SOLO con JSON array valido, zero testo extra:
-[{"idx":0,"benzina":4.2,"diesel":3.9,"summary":"20-25 parole basate su dati reali","flag":"ok","payment_info":"accetta contactless","found_issues":false}]
+IMPORTANTE: distribuisci i voti in modo realistico. Varia tra i distributori.
+
+Rispondi SOLO con un JSON array valido, nessun testo aggiuntivo, nessun markdown:
+[{"idx":0,"benzina":4.1,"diesel":3.8,"summary":"20 parole massimo descrizione qualità","flag":"ok","found_issues":false}]
 flag: ok|caution|avoid`;
     }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Call Gemini API
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+    const response = await fetch(geminiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: mode === 'review' ? 500 : 1500,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content: prompt }]
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: mode === 'review' ? 400 : 1200,
+        }
       })
     });
 
+    if (!response.ok) {
+      const errBody = await response.text();
+      console.error('Gemini error:', response.status, errBody);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: `Gemini error ${response.status}` }) };
+    }
+
     const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
     if (mode === 'review') {
-      const text = data.content?.find(b => b.type === 'text')?.text || 'Recensione non disponibile.';
-      const searched = data.content?.some(b => b.type === 'tool_use');
-      return { statusCode: 200, headers, body: JSON.stringify({ review: text, searched }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ review: text.trim(), searched: false }) };
     } else {
-      const textBlock = data.content?.find(b => b.type === 'text');
-      const txt = textBlock?.text || '[]';
-      const match = txt.replace(/```json|```/g, '').match(/\[[\s\S]*\]/);
+      const clean = text.replace(/```json|```/g, '').trim();
+      const match = clean.match(/\[[\s\S]*\]/);
       const ratings = match ? JSON.parse(match[0]) : [];
       return { statusCode: 200, headers, body: JSON.stringify({ ratings }) };
     }
 
   } catch (err) {
-    console.error(err);
+    console.error('Function error:', err);
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
